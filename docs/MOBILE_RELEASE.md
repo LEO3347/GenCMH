@@ -16,6 +16,31 @@ npx eas build --platform android
 
 Antes de publicar, configura `apiUrl` con el dominio publico y conserva `localApiUrl` para eventos offline con Wi-Fi privado.
 
+## Build instalable para pruebas
+
+La app de usuario ya apunta a la API publica:
+
+```text
+https://gen-api-2af9.onrender.com
+```
+
+Para generar un APK instalable sin depender de Expo Go ni de `exp://192...`:
+
+```powershell
+cd apps/user-mobile
+npx eas login
+npx eas build --platform android --profile preview
+```
+
+EAS dara una URL de descarga del APK. Esa URL se puede compartir para instalar en Android. Para iPhone se necesita TestFlight/App Store o una cuenta Apple Developer.
+
+Si solo quieres probar en Expo Go desde otra red, usa tunel:
+
+```powershell
+cd apps/user-mobile
+npm.cmd run start:tunnel
+```
+
 ## iOS
 
 1. Crear Apple Developer Account.

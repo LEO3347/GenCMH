@@ -13,10 +13,28 @@ export function AuthScreen({ onReady }: { onReady: (token: string) => void }) {
   const [error, setError] = useState("");
 
   async function submit() {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
+
+    if (!cleanEmail.includes("@")) {
+      setError("Escribe un correo valido, por ejemplo nombre@correo.com.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("El password debe tener minimo 8 caracteres.");
+      return;
+    }
+
+    if (mode === "register" && cleanName.length < 2) {
+      setError("Escribe tu nombre con minimo 2 caracteres.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
-      const result = mode === "login" ? await login(email, password) : await register(email, password, name);
+      const result = mode === "login" ? await login(cleanEmail, password) : await register(cleanEmail, password, cleanName);
       await saveToken(result.token);
       onReady(result.token);
     } catch (error) {
@@ -24,6 +42,10 @@ export function AuthScreen({ onReady }: { onReady: (token: string) => void }) {
         setError("Email o password incorrectos. Para demo usa fan@gen.mx / GenDemo123!.");
       } else if (error instanceof ApiError && error.status === 409) {
         setError("Ese email ya existe. Cambia a Entrar o usa otro correo.");
+      } else if (error instanceof ApiError && error.status === 422) {
+        setError("Revisa el correo, nombre y password. El password necesita minimo 8 caracteres.");
+      } else if (error instanceof ApiError && error.status === 429) {
+        setError("Demasiados intentos seguidos. Espera un momento y vuelve a probar.");
       } else {
         setError("No se pudo conectar con la API. Revisa que la URL del API responda desde el celular.");
       }

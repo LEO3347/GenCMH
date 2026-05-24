@@ -72,14 +72,14 @@ async function request<T>(path: string, token?: string, options: RequestInit = {
 export async function login(email: string, password: string) {
   return request<{ token: string }>("/api/auth/login", undefined, {
     method: "POST",
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ email: email.trim().toLowerCase(), password })
   }, false);
 }
 
 export async function register(email: string, password: string, name: string) {
   return request<{ token: string }>("/api/auth/register", undefined, {
     method: "POST",
-    body: JSON.stringify({ email, password, name })
+    body: JSON.stringify({ email: email.trim().toLowerCase(), password, name: name.trim() })
   }, false);
 }
 
