@@ -2,7 +2,7 @@ services:
   - type: web
     name: gen-api
     runtime: docker
-    plan: starter
+    plan: free
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     healthCheckPath: /health
@@ -40,5 +40,5 @@ databases:
   - name: gen-postgres
     databaseName: gen
     user: gen
-    plan: starter
+    plan: free
     postgresMajorVersion: "18"
