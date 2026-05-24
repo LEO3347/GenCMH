@@ -3,12 +3,27 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { config } from "../config.js";
 
+const allowedOrigins = new Set([
+  config.webOrigin,
+  "http://localhost:3000",
+  "http://localhost:8081",
+  "exp://localhost:8081"
+]);
+
+function isAllowedOrigin(origin?: string) {
+  if (!origin) return true;
+  if (allowedOrigins.has(origin)) return true;
+  return /^https:\/\/gen-web(-[a-z0-9]+)?\.onrender\.com$/i.test(origin);
+}
+
 export const security = [
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }
   }),
   cors({
-    origin: [config.webOrigin, "http://localhost:8081", "exp://localhost:8081"],
+    origin(origin, callback) {
+      callback(null, isAllowedOrigin(origin));
+    },
     credentials: true
   }),
   rateLimit({

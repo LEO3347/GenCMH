@@ -20,7 +20,7 @@ function invalidCredentials(res: Response) {
 
 function tokenFor(user: { id: string; email: string; role: string }) {
   return jwt.sign(user, config.jwtSecret, {
-    expiresIn: "2h",
+    expiresIn: "30d",
     issuer: config.jwtIssuer,
     audience: config.jwtAudience
   });

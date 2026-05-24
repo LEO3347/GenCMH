@@ -2,6 +2,8 @@
 
 ## API publica rapida en Render
 
+Para que la gente pueda entrar a cualquier hora, usa planes pagados/always-on en Render para `gen-api`, `gen-web` y `gen-postgres`. Los planes gratis pueden dormir servicios y la base gratis expira; sirven para pruebas, no para operacion permanente.
+
 El repo incluye `render.yaml` para crear:
 
 - `gen-api`: servicio web Docker.
