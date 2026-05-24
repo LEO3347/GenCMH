@@ -1,9 +1,16 @@
 node_modules
+apps/*/node_modules
 .next
+apps/*/.next
 dist
+apps/*/dist
 .expo
+apps/*/.expo
 .env
+apps/*/.env
 .env.local
+apps/*/.env.local
 npm-debug.log*
+*.log
 coverage
 *.tsbuildinfo
