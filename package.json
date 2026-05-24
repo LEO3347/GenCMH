@@ -22,9 +22,5 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
-  },
-  "dependencies": {
-    "react": "^19.1.0",
-    "react-native": "^0.81.5"
   }
 }

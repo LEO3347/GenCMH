@@ -3,6 +3,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { ShieldCheck } from "lucide-react-native";
 import { login } from "../api";
 
+const ShieldCheckIcon = ShieldCheck as React.ComponentType<{ color?: string; size?: number }>;
+
 export function LoginScreen({ onAuthenticated }: { onAuthenticated: (token: string) => void }) {
   const [email, setEmail] = useState("staff@gen.mx");
   const [password, setPassword] = useState("");
@@ -25,7 +27,7 @@ export function LoginScreen({ onAuthenticated }: { onAuthenticated: (token: stri
   return (
     <View style={styles.screen}>
       <View style={styles.logo}>
-        <ShieldCheck color="#00d4ff" size={34} />
+        <ShieldCheckIcon color="#00d4ff" size={34} />
       </View>
       <Text style={styles.title}>GEN Staff</Text>
       <Text style={styles.subtitle}>Acceso privado para validacion de boletos y control de puerta.</Text>

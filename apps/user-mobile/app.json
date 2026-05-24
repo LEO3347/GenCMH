@@ -16,8 +16,8 @@
       ]
     },
     "extra": {
-      "apiUrl": "http://192.168.1.83:4000",
-      "localApiUrl": "http://192.168.1.83:4000"
+      "apiUrl": "https://gen-api-2af9.onrender.com",
+      "localApiUrl": "https://gen-api-2af9.onrender.com"
     },
     "plugins": [
       "expo-secure-store"

@@ -5,6 +5,15 @@ import { LogOut, QrCode, ShieldAlert, ShieldCheck } from "lucide-react-native";
 import * as SecureStore from "expo-secure-store";
 import { syncOfflineScans, validateScan } from "../api";
 
+const BarcodeScannerView = BarCodeScanner as unknown as React.ComponentType<{
+  onBarCodeScanned: ({ data }: { data: string }) => void;
+  style?: object;
+}>;
+const LogOutIcon = LogOut as React.ComponentType<{ color?: string; size?: number }>;
+const QrCodeIcon = QrCode as React.ComponentType<{ color?: string; size?: number }>;
+const ShieldAlertIcon = ShieldAlert as React.ComponentType<{ color?: string; size?: number }>;
+const ShieldCheckIcon = ShieldCheck as React.ComponentType<{ color?: string; size?: number }>;
+
 interface QueuedScan {
   token: string;
   deviceId: string;
@@ -62,7 +71,7 @@ export function ScannerScreen({ token, onLogout }: { token: string; onLogout: ()
   if (!permission?.granted) {
     return (
       <View style={styles.center}>
-        <QrCode color="#00d4ff" size={56} />
+        <QrCodeIcon color="#00d4ff" size={56} />
         <Text style={styles.title}>Activar camara</Text>
         <Pressable style={styles.button} onPress={requestPermission}>
           <Text style={styles.buttonText}>Permitir escaneo</Text>
@@ -79,15 +88,15 @@ export function ScannerScreen({ token, onLogout }: { token: string; onLogout: ()
           <Text style={styles.title}>Scanner live</Text>
         </View>
         <Pressable onPress={onLogout} style={styles.iconButton}>
-          <LogOut color="white" size={22} />
+          <LogOutIcon color="white" size={22} />
         </Pressable>
       </View>
       <View style={styles.cameraWrap}>
-        <BarCodeScanner onBarCodeScanned={onScanned} style={StyleSheet.absoluteFillObject} />
+        <BarcodeScannerView onBarCodeScanned={onScanned} style={StyleSheet.absoluteFillObject} />
         <View style={styles.reticle} />
       </View>
       <View style={[styles.result, last?.valid ? styles.accepted : last ? styles.rejected : null]}>
-        {last?.valid ? <ShieldCheck color="#c7ff3d" size={26} /> : <ShieldAlert color={last ? "#ff4d6d" : "#00d4ff"} size={26} />}
+        {last?.valid ? <ShieldCheckIcon color="#c7ff3d" size={26} /> : <ShieldAlertIcon color={last ? "#ff4d6d" : "#00d4ff"} size={26} />}
         <View>
           <Text style={styles.resultTitle}>{last ? (last.valid ? "Acceso aprobado" : "QR rechazado") : "Listo para escanear"}</Text>
           <Text style={styles.resultText}>{last?.valid ? `${last.attendee?.name} · ${last.attendee?.tier}` : last?.reason ?? "Apunta al QR dinamico de GEN."}</Text>
