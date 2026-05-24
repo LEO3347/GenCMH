@@ -35,6 +35,20 @@ services:
         sync: false
       - key: MERCADOPAGO_ACCESS_TOKEN
         sync: false
+  - type: web
+    name: gen-web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: NEXT_PUBLIC_API_URL
+        value: https://gen-api-2af9.onrender.com
 
 databases:
   - name: gen-postgres

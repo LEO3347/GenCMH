@@ -48,9 +48,18 @@ eventsRouter.post("/", requireAuth, requireRole("organizer", "admin", "super_adm
 
 eventsRouter.get("/:id", async (req, res, next) => {
   try {
-    const { rows } = await pool.query("select * from events where id = $1", [req.params.id]);
-    if (!rows[0]) return res.status(404).json({ error: "event_not_found" });
-    res.json({ event: rows[0] });
+    const [event, ticketTypes] = await Promise.all([
+      pool.query("select * from events where id = $1", [req.params.id]),
+      pool.query(
+        `select id, event_id, name, tier, price_cents, quantity, benefits
+         from ticket_types
+         where event_id = $1
+         order by price_cents asc`,
+        [req.params.id]
+      )
+    ]);
+    if (!event.rows[0]) return res.status(404).json({ error: "event_not_found" });
+    res.json({ event: event.rows[0], ticketTypes: ticketTypes.rows });
   } catch (error) {
     next(error);
   }
