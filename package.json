@@ -1,0 +1,30 @@
+{
+  "name": "gen-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GEN - plataforma premium para fiestas, eventos, boletos QR y control de acceso.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w @gen/api\" \"npm run dev -w @gen/web\"",
+    "dev:web": "npm run dev -w @gen/web",
+    "dev:api": "npm run dev -w @gen/api",
+    "dev:staff": "npm run start -w @gen/staff-mobile",
+    "dev:user": "npm run start -w @gen/user-mobile",
+    "db:schema": "node scripts/apply-db.mjs infra/schema.sql",
+    "db:seed": "node scripts/apply-db.mjs infra/seed.sql",
+    "db:setup": "node scripts/apply-db.mjs infra/schema.sql infra/seed.sql",
+    "db:migrate": "npm run db:schema",
+    "lint": "npm run lint -ws --if-present",
+    "typecheck": "npm run typecheck -ws --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-native": "^0.81.5"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "GEN",
+    "slug": "gen-user",
+    "scheme": "gen",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "bundleIdentifier": "com.gen.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.gen.app",
+      "permissions": [
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "extra": {
+      "apiUrl": "http://192.168.1.83:4000",
+      "localApiUrl": "http://192.168.1.83:4000"
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}

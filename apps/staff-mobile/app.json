@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "GEN Staff",
+    "slug": "gen-staff",
+    "scheme": "genstaff",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "bundleIdentifier": "com.gen.staff",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.gen.staff",
+      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION"]
+    },
+    "extra": {
+      "apiUrl": "http://192.168.1.83:4000"
+    }
+  }
+}

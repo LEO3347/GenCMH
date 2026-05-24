@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: gen
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - gen_postgres:/var/lib/postgresql/data
+      - ./infra/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/gen
+      JWT_SECRET: change-me-in-production-change-me-in-production
+      QR_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      QR_SIGNING_SECRET: change-me-qr-signing-secret-change-me
+      WEB_ORIGIN: http://localhost:3000
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+
+volumes:
+  gen_postgres:
