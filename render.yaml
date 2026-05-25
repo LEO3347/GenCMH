@@ -73,15 +73,9 @@ services:
       - key: COOKIE_DOMAIN
         sync: false
       - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: gen-admin-web
-          property: url
+        value: https://gen-admin-web.onrender.com
       - key: CORS_ORIGIN
-        fromService:
-          type: web
-          name: gen-admin-web
-          property: url
+        value: https://gen-admin-web.onrender.com
       - key: S3_BUCKET
         sync: false
       - key: S3_REGION
@@ -107,10 +101,7 @@ services:
       - key: NODE_OPTIONS
         value: --max_old_space_size=512
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: gen-admin-api
-          property: url
+        value: https://gen-admin-api.onrender.com
     routes:
       - type: rewrite
         source: /*
