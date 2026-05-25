@@ -98,7 +98,14 @@ async function api<T>(path: string, options: RequestInit = {}, token?: string): 
       ...(options.headers ?? {})
     }
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const raw = await res.text();
+    let code = raw;
+    if (raw.trim().startsWith("{")) {
+      code = (JSON.parse(raw) as { error?: string }).error ?? raw;
+    }
+    throw new Error(code || "request_failed");
+  }
   return res.json() as Promise<T>;
 }
 
@@ -128,9 +135,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [email, setEmail] = useState("fan@gen.mx");
-  const [password, setPassword] = useState("GenDemo123!");
-  const [name, setName] = useState("Fan GEN");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [message, setMessage] = useState("");
 
   const [tab, setTab] = useState<Tab>("events");
@@ -147,14 +154,10 @@ export default function Home() {
   const total = products.reduce((sum, product) => sum + (cart[product.id] ?? 0) * product.price_cents, 0);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem("gen.web.token") ?? "";
-    setToken(savedToken);
+    localStorage.removeItem("gen.web.token");
+    setToken("");
     setOrders(loadOrders());
-    if (savedToken) {
-      refreshManifest(savedToken).finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    setLoading(false);
   }, []);
 
   async function refreshManifest(activeToken = token) {
@@ -167,17 +170,38 @@ export default function Home() {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
 
+    if (!cleanEmail.includes("@")) {
+      setMessage("Escribe un correo valido.");
+      return;
+    }
+    if (password.length < 8) {
+      setMessage("El password debe tener minimo 8 caracteres.");
+      return;
+    }
+    if (mode === "register" && cleanName.length < 2) {
+      setMessage("Escribe tu nombre.");
+      return;
+    }
+
     setAuthLoading(true);
     setMessage("");
     try {
       const path = mode === "login" ? "/api/auth/login" : "/api/auth/register";
       const body = mode === "login" ? { email: cleanEmail, password } : { email: cleanEmail, password, name: cleanName };
       const result = await api<{ token: string }>(path, { method: "POST", body: JSON.stringify(body) });
-      localStorage.setItem("gen.web.token", result.token);
       setToken(result.token);
       await refreshManifest(result.token);
-    } catch {
-      setMessage("No se pudo entrar. Revisa email/password o crea una cuenta nueva.");
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      if (code === "email_already_registered") {
+        setMessage("Ese correo ya existe. Cambia a Ya tengo cuenta para entrar.");
+      } else if (code === "invalid_credentials") {
+        setMessage("Correo o password incorrectos.");
+      } else if (code === "validation_error") {
+        setMessage("Revisa el correo, nombre y password. El password necesita minimo 8 caracteres.");
+      } else {
+        setMessage("No se pudo conectar con GEN. Intenta otra vez.");
+      }
     } finally {
       setAuthLoading(false);
     }
