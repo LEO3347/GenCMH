@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Crown, Gift, Loader2, LogOut, QrCode, RefreshCw, ShoppingBag, Sparkles, Ticket, WalletCards } from "lucide-react";
+import { Crown, Gift, Loader2, LogOut, QrCode, RefreshCw, ShoppingBag, Sparkles, Ticket, Trash2, WalletCards } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://gen-api-2af9.onrender.com";
 
@@ -300,10 +300,19 @@ export default function Home() {
   }
 
   function changeQty(product: Product, delta: number) {
-    setCart((current) => ({
-      ...current,
-      [product.id]: Math.max(0, Math.min(product.stock, (current[product.id] ?? 0) + delta))
-    }));
+    setCart((current) => {
+      const quantity = Math.max(0, Math.min(product.stock, (current[product.id] ?? 0) + delta));
+      const next = { ...current };
+      if (quantity === 0) delete next[product.id];
+      else next[product.id] = quantity;
+      return next;
+    });
+  }
+
+  function removeOrder(clientOrderId: string) {
+    const updated = orders.filter((order) => order.clientOrderId !== clientOrderId);
+    saveOrders(updated);
+    setOrders(updated);
   }
 
   function placeOfflineOrder() {
@@ -506,9 +515,14 @@ export default function Home() {
                 </article>
               ))}
             </div>
-            <button onClick={placeOfflineOrder} disabled={total === 0} className="mt-4 rounded-md bg-[#ff2bd6] p-4 font-black disabled:opacity-40">
-              Ordenar sin fila - {money(total)}
-            </button>
+            <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+              <button onClick={placeOfflineOrder} disabled={total === 0} className="rounded-md bg-[#ff2bd6] p-4 font-black disabled:opacity-40">
+                Ordenar sin fila - {money(total)}
+              </button>
+              <button onClick={() => setCart({})} disabled={total === 0} className="flex items-center justify-center gap-2 rounded-md border border-white/10 bg-white/10 px-5 py-4 font-black disabled:opacity-40">
+                <Trash2 size={18} /> Vaciar
+              </button>
+            </div>
           </section>
         ) : null}
 
@@ -543,9 +557,16 @@ export default function Home() {
               {orders.length === 0 ? <p className="rounded-lg border border-white/10 bg-white/[0.06] p-5 text-center text-white/60">Todavia no tienes compras.</p> : null}
               {orders.map((order) => (
                 <article key={order.clientOrderId} className="rounded-lg border border-white/10 bg-white/[0.06] p-5">
-                  <h2 className="font-black">{order.pickupCode}</h2>
-                  <p className="mt-1 text-white/58">{order.status === "queued_offline" ? "Pendiente offline" : order.status === "synced" ? "Centralizado en cuenta principal" : `Rechazado: ${order.rejectionReason}`}</p>
-                  <p className="mt-2 text-lg font-black text-[#c7ff3d]">{money(order.totalCents)}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="font-black">{order.pickupCode}</h2>
+                      <p className="mt-1 text-white/58">{order.status === "queued_offline" ? "Pendiente offline" : order.status === "synced" ? "Centralizado en cuenta principal" : `Rechazado: ${order.rejectionReason}`}</p>
+                      <p className="mt-2 text-lg font-black text-[#c7ff3d]">{money(order.totalCents)}</p>
+                    </div>
+                    <button onClick={() => removeOrder(order.clientOrderId)} className="grid h-10 w-10 place-items-center rounded-md bg-white/10 text-white" aria-label="Eliminar compra">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                   {order.pickupQrImage ? <img src={order.pickupQrImage} alt="QR de pick-up" className="mt-4 h-40 w-40 rounded-md bg-white p-2" /> : null}
                 </article>
               ))}

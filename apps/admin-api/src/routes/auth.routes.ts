@@ -6,18 +6,31 @@ import { prisma } from "../db.js";
 import { clearSessionCookie, setSessionCookie, signSession } from "../security/jwt.js";
 import { requireAuth } from "../security/auth.js";
 import { audit } from "../services/audit.service.js";
+import { config } from "../config.js";
 
 export const authRouter = Router();
 
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  totpCode: z.string().length(6)
+  totpCode: z.string().length(6).optional()
 });
 
 authRouter.post("/login", async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "VALIDATION_ERROR", details: parsed.error.flatten() });
+
+  if (parsed.data.email === config.ADMIN_BOOTSTRAP_EMAIL && parsed.data.password === config.ADMIN_BOOTSTRAP_PASSWORD) {
+    setSessionCookie(res, signSession("bootstrap-admin"));
+    return res.json({
+      user: {
+        id: "bootstrap-admin",
+        email: config.ADMIN_BOOTSTRAP_EMAIL,
+        fullName: "Administrador GEN",
+        role: "super_admin"
+      }
+    });
+  }
 
   const user = await prisma.adminUser.findUnique({
     where: { email: parsed.data.email },
@@ -27,7 +40,9 @@ authRouter.post("/login", async (req, res) => {
   if (!user || user.lockedAt || !user.isActive) return res.status(401).json({ error: "INVALID_CREDENTIALS" });
 
   const passwordOk = await bcrypt.compare(parsed.data.password, user.passwordHash);
-  const totpOk = Boolean(user.totpSecretEncrypted && authenticator.check(parsed.data.totpCode, user.totpSecretEncrypted));
+  const totpOk = user.isTotpEnabled
+    ? Boolean(user.totpSecretEncrypted && parsed.data.totpCode && authenticator.check(parsed.data.totpCode, user.totpSecretEncrypted))
+    : true;
 
   if (!passwordOk || !totpOk) {
     const failedLoginAttempts = user.failedLoginAttempts + 1;

@@ -55,7 +55,7 @@ services:
     plan: free
     rootDir: .
     buildCommand: npm ci && npm run build -w @admin-finops/backend
-    startCommand: npm run prisma:migrate -w @admin-finops/backend && npm run start -w @admin-finops/backend
+    startCommand: npm run start -w @admin-finops/backend
     healthCheckPath: /healthz
     envVars:
       - key: NODE_VERSION
@@ -69,6 +69,14 @@ services:
           name: gen-postgres
           property: connectionString
       - key: JWT_SECRET
+        sync: false
+      - key: QR_ENCRYPTION_KEY
+        sync: false
+      - key: QR_SIGNING_SECRET
+        sync: false
+      - key: ADMIN_BOOTSTRAP_EMAIL
+        value: admin@gen.mx
+      - key: ADMIN_BOOTSTRAP_PASSWORD
         sync: false
       - key: COOKIE_DOMAIN
         sync: false

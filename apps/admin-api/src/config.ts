@@ -13,7 +13,11 @@ const envSchema = z.object({
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
   SLACK_WEBHOOK_URL: z.string().optional(),
-  SMTP_URL: z.string().optional()
+  SMTP_URL: z.string().optional(),
+  QR_ENCRYPTION_KEY: z.string().default("render-dev-qr-encryption-key-change-me"),
+  QR_SIGNING_SECRET: z.string().default("render-dev-qr-signing-secret-change-me"),
+  ADMIN_BOOTSTRAP_EMAIL: z.string().email().default("admin@gen.mx"),
+  ADMIN_BOOTSTRAP_PASSWORD: z.string().min(8).default("GenAdmin123!")
 });
 
 export const config = envSchema.parse(process.env);

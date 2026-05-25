@@ -1,77 +1,31 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  Treemap,
-  XAxis,
-  YAxis
-} from "recharts";
-import {
-  Bell,
-  CalendarDays,
+  Camera,
   CheckCircle2,
   Download,
-  Filter,
+  KeyRound,
   LockKeyhole,
+  LogOut,
+  QrCode,
   ReceiptText,
   ShieldCheck,
-  TrendingUp
+  TrendingUp,
+  UserPlus,
+  Users
 } from "lucide-react";
-import { api, Expense, KPIResponse } from "./api";
+import { api, AdminAccount, AdminSession, Expense, KPIResponse, ScanResult } from "./api";
 import { useFilters } from "./store";
+
+type View = "bi" | "camera" | "admins";
 
 const money = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 
-const fallbackKpis: KPIResponse = {
-  totalMonth: 842300,
-  burnRate: 28076,
-  budgetDeviation: -6.8,
-  monthEndProjection: 898432
+const zeroKpis: KPIResponse = {
+  totalMonth: 0,
+  burnRate: 0,
+  budgetDeviation: 0,
+  monthEndProjection: 0
 };
-
-const fallbackExpenses: Expense[] = [
-  {
-    id: "e0f1b75d-8c12-4e5e-9f20-2bc739c30110",
-    amount: "148000.00",
-    currency: "MXN",
-    issuedAt: "2026-05-02",
-    dueAt: "2026-05-30",
-    paymentStatus: "IN_REVIEW",
-    vendor: { legalName: "CloudOps Mexico SA", taxId: "COM240101QX1" },
-    department: { name: "Operaciones" },
-    category: { name: "Licencias de Software", parent: { name: "Operaciones" } }
-  },
-  {
-    id: "1294ea9d-1389-4f27-9d8f-49369493593e",
-    amount: "64000.00",
-    currency: "MXN",
-    issuedAt: "2026-05-08",
-    dueAt: "2026-05-24",
-    paymentStatus: "OVERDUE",
-    vendor: { legalName: "Nodo Fiscal", taxId: "NFI9107142P1" },
-    department: { name: "Finanzas" },
-    category: { name: "Auditoria", parent: { name: "Servicios Profesionales" } }
-  }
-];
-
-const areaFallback = [
-  { month: "Ene", Operaciones: 220000, Finanzas: 90000, Comercial: 140000 },
-  { month: "Feb", Operaciones: 260000, Finanzas: 110000, Comercial: 123000 },
-  { month: "Mar", Operaciones: 238000, Finanzas: 132000, Comercial: 151000 },
-  { month: "Abr", Operaciones: 310000, Finanzas: 97000, Comercial: 170000 },
-  { month: "May", Operaciones: 295000, Finanzas: 120000, Comercial: 196000 }
-];
-
-const concentrationFallback = [
-  { name: "CloudOps", size: 280000 },
-  { name: "Nomina", size: 210000 },
-  { name: "Renta", size: 160000 },
-  { name: "Legal", size: 95000 },
-  { name: "Marketing", size: 88000 }
-];
 
 function StatCard({ label, value, icon: Icon, tone }: { label: string; value: string; icon: typeof TrendingUp; tone: string }) {
   return (
@@ -83,51 +37,212 @@ function StatCard({ label, value, icon: Icon, tone }: { label: string; value: st
   );
 }
 
-function statusLabel(status: Expense["paymentStatus"]) {
-  return {
-    PENDING: "Pendiente",
-    PAID: "Pagado",
-    SCHEDULED: "Programado",
-    OVERDUE: "Vencido",
-    IN_REVIEW: "En revision"
-  }[status];
+function Login({ onReady }: { onReady: (session: AdminSession) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    setBusy(true);
+    setError("");
+    try {
+      onReady(await api.login(email.trim().toLowerCase(), password));
+    } catch {
+      setError("No se pudo entrar. Revisa correo y contrasena de administrador.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="login-shell">
+      <section className="login-panel">
+        <div className="login-mark"><ShieldCheck size={30} /></div>
+        <p className="eyebrow">Acceso seguro</p>
+        <h1>Admin GEN</h1>
+        <div className="login-form">
+          <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Correo admin" autoComplete="username" />
+          <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Contrasena" type="password" autoComplete="current-password" />
+          {error ? <p className="form-error">{error}</p> : null}
+          <button onClick={submit} disabled={busy || !email || password.length < 8}>
+            <LockKeyhole size={18} /> {busy ? "Entrando..." : "Entrar"}
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function CameraPanel() {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [manualToken, setManualToken] = useState("");
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [cameraStatus, setCameraStatus] = useState("Camara lista para leer QR.");
+  const [busy, setBusy] = useState(false);
+
+  async function validate(token: string) {
+    if (!token.trim()) return;
+    setBusy(true);
+    try {
+      setScanResult(await api.validateQr(token.trim()));
+    } catch {
+      setScanResult({ valid: false, reason: "No se pudo validar el QR." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setCameraStatus("Camara encendida. Si tu navegador no detecta el QR automaticamente, pega el codigo abajo.");
+    } catch {
+      setCameraStatus("No se pudo abrir la camara. Puedes pegar el token del QR manualmente.");
+    }
+  }
+
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  return (
+    <section className="panel camera-panel">
+      <div className="panel-head">
+        <div>
+          <p className="eyebrow">Control de acceso</p>
+          <h2>Camara QR</h2>
+        </div>
+        <button onClick={startCamera}><Camera size={18} /> Abrir camara</button>
+      </div>
+      <div className="camera-grid">
+        <div className="camera-view">
+          <video ref={videoRef} autoPlay muted playsInline />
+          <QrCode size={74} />
+        </div>
+        <div className="scanner-box">
+          <p>{cameraStatus}</p>
+          <textarea value={manualToken} onChange={(event) => setManualToken(event.target.value)} placeholder="Pega aqui el contenido del QR GEN" />
+          <button onClick={() => validate(manualToken)} disabled={busy || !manualToken.trim()}><CheckCircle2 size={18} /> Validar QR</button>
+          {scanResult ? (
+            <div className={`scan-result ${scanResult.valid ? "ok" : "bad"}`}>
+              <strong>{scanResult.valid ? "Acceso aceptado" : "Acceso rechazado"}</strong>
+              <span>{scanResult.valid ? scanResult.attendee?.name : scanResult.reason}</span>
+              {scanResult.attendee ? <small>{scanResult.attendee.event} / {scanResult.attendee.tier}</small> : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AdminsPanel() {
+  const [admins, setAdmins] = useState<AdminAccount[]>([]);
+  const [form, setForm] = useState({ fullName: "", email: "", password: "" });
+  const [message, setMessage] = useState("");
+
+  async function load() {
+    try {
+      setAdmins((await api.admins()).admins);
+    } catch {
+      setAdmins([]);
+    }
+  }
+
+  async function create() {
+    setMessage("");
+    try {
+      const result = await api.createAdmin(form);
+      setAdmins((current) => [result.admin, ...current]);
+      setForm({ fullName: "", email: "", password: "" });
+      setMessage("Administrador creado.");
+    } catch {
+      setMessage("No se pudo crear. Revisa que el API admin ya este desplegado y que el correo no exista.");
+    }
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  return (
+    <section className="panel admins-panel">
+      <div className="panel-head">
+        <div>
+          <p className="eyebrow">Seguridad</p>
+          <h2>Cuentas de administradores</h2>
+        </div>
+      </div>
+      <div className="admin-grid">
+        <div className="admin-form">
+          <input value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} placeholder="Nombre" />
+          <input value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="Correo" />
+          <input value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} placeholder="Contrasena inicial" type="password" />
+          <button onClick={create} disabled={!form.fullName || !form.email || form.password.length < 8}><UserPlus size={18} /> Crear admin</button>
+          {message ? <p className="sync">{message}</p> : null}
+        </div>
+        <div className="admin-list">
+          {admins.length === 0 ? <p className="empty">Aun no hay administradores guardados en base de datos.</p> : null}
+          {admins.map((admin) => (
+            <article key={admin.id}>
+              <strong>{admin.fullName}</strong>
+              <span>{admin.email}</span>
+              <small>{admin.role} / {admin.isActive ? "Activo" : "Inactivo"}</small>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export function App() {
   const filters = useFilters();
-  const [kpis, setKpis] = useState(fallbackKpis);
-  const [expenses, setExpenses] = useState(fallbackExpenses);
+  const [session, setSession] = useState<AdminSession | null>(null);
+  const [view, setView] = useState<View>("bi");
+  const [kpis, setKpis] = useState(zeroKpis);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    api.me().then(setSession).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
     let live = true;
     setBusy(true);
     Promise.all([api.kpis(), api.expenses(filters.toParams())])
-      .then(([nextKpis, expenseResult]) => {
+      .then(() => {
         if (live) {
-          setKpis(nextKpis);
-          setExpenses(expenseResult.expenses);
+          setKpis(zeroKpis);
+          setExpenses([]);
         }
       })
-      .catch(() => undefined)
+      .catch(() => {
+        if (live) {
+          setKpis(zeroKpis);
+          setExpenses([]);
+        }
+      })
       .finally(() => live && setBusy(false));
     return () => { live = false; };
-  }, [filters.from, filters.to, filters.departmentId, filters.vendorId, filters.paymentStatus, filters.minAmount, filters.maxAmount]);
+  }, [session, filters.from, filters.to, filters.departmentId, filters.vendorId, filters.paymentStatus, filters.minAmount, filters.maxAmount]);
 
-  const rows = useMemo(() => expenses.map((expense) => ({
-    ...expense,
-    total: Number(expense.amount)
-  })), [expenses]);
+  const rows = useMemo(() => expenses.map((expense) => ({ ...expense, total: Number(expense.amount) })), [expenses]);
+
+  if (!session) return <Login onReady={setSession} />;
 
   return (
     <main className="shell">
       <aside className="sidebar">
-        <div className="brand"><ShieldCheck size={24} /> Admin FinOps</div>
+        <div className="brand"><ShieldCheck size={24} /> Admin GEN</div>
         <nav>
-          <button className="active"><TrendingUp size={18} /> BI</button>
-          <button><ReceiptText size={18} /> Egresos</button>
-          <button><Bell size={18} /> Alertas</button>
-          <button><LockKeyhole size={18} /> ABAC</button>
+          <button className={view === "bi" ? "active" : ""} onClick={() => setView("bi")}><TrendingUp size={18} /> BI</button>
+          <button className={view === "camera" ? "active" : ""} onClick={() => setView("camera")}><Camera size={18} /> Camara</button>
+          <button className={view === "admins" ? "active" : ""} onClick={() => setView("admins")}><Users size={18} /> Administradores</button>
         </nav>
       </aside>
 
@@ -135,95 +250,60 @@ export function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">Panel restringido</p>
-            <h1>Control financiero y operativo</h1>
+            <h1>{view === "bi" ? "Control operativo" : view === "camera" ? "Lectura de boletos QR" : "Seguridad de acceso"}</h1>
           </div>
           <div className="actions">
             <button title="Exportar PDF" onClick={() => api.createExport("PDF", Object.fromEntries(filters.toParams()))}><Download size={18} /> PDF</button>
-            <button title="Notificaciones"><Bell size={18} /></button>
+            <button title="Salir" onClick={() => api.logout().finally(() => setSession(null))}><LogOut size={18} /></button>
           </div>
         </header>
 
-        <section className="stats-grid">
-          <StatCard label="Gasto total del mes" value={money.format(kpis.totalMonth)} icon={ReceiptText} tone="blue" />
-          <StatCard label="Burn rate diario" value={money.format(kpis.burnRate)} icon={TrendingUp} tone="green" />
-          <StatCard label="Desviacion presupuestal" value={`${kpis.budgetDeviation.toFixed(1)}%`} icon={ShieldCheck} tone="amber" />
-          <StatCard label="Proyeccion cierre" value={money.format(kpis.monthEndProjection)} icon={CalendarDays} tone="red" />
-        </section>
+        {view === "bi" ? (
+          <>
+            <section className="stats-grid">
+              <StatCard label="Ventas del mes" value={money.format(kpis.totalMonth)} icon={ReceiptText} tone="blue" />
+              <StatCard label="Promedio diario" value={money.format(kpis.burnRate)} icon={TrendingUp} tone="green" />
+              <StatCard label="Desviacion" value={`${kpis.budgetDeviation.toFixed(1)}%`} icon={ShieldCheck} tone="amber" />
+              <StatCard label="Proyeccion" value={money.format(kpis.monthEndProjection)} icon={KeyRound} tone="red" />
+            </section>
 
-        <section className="filters">
-          <span><Filter size={16} /> Filtros</span>
-          <input type="date" value={filters.from} onChange={(e) => filters.set({ from: e.target.value })} />
-          <input type="date" value={filters.to} onChange={(e) => filters.set({ to: e.target.value })} />
-          <select value={filters.paymentStatus} onChange={(e) => filters.set({ paymentStatus: e.target.value })}>
-            <option value="">Todos los estados</option>
-            <option value="PENDING">Pendiente</option>
-            <option value="PAID">Pagado</option>
-            <option value="SCHEDULED">Programado</option>
-            <option value="OVERDUE">Vencido</option>
-            <option value="IN_REVIEW">En revision</option>
-          </select>
-          <input placeholder="Monto min." value={filters.minAmount} onChange={(e) => filters.set({ minAmount: e.target.value })} />
-          <input placeholder="Monto max." value={filters.maxAmount} onChange={(e) => filters.set({ maxAmount: e.target.value })} />
-        </section>
+            <section className="table-panel">
+              <div className="table-head">
+                <h2>Movimientos recientes</h2>
+                <button><CheckCircle2 size={17} /> Revisar</button>
+              </div>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Cliente</th>
+                      <th>Categoria</th>
+                      <th>Departamento</th>
+                      <th>Estado</th>
+                      <th>Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((expense) => (
+                      <tr key={expense.id}>
+                        <td>{expense.vendor?.legalName ?? "N/D"}<small>{expense.vendor?.taxId}</small></td>
+                        <td>{expense.category?.parent?.name ?? "General"} / {expense.category?.name ?? "N/D"}</td>
+                        <td>{expense.department?.name ?? "N/D"}</td>
+                        <td><span className={`status ${expense.paymentStatus.toLowerCase()}`}>{expense.paymentStatus}</span></td>
+                        <td>{money.format(expense.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {rows.length === 0 ? <p className="empty">Todo esta en cero. Aun no hay ventas registradas para este lanzamiento.</p> : null}
+              {busy && <p className="sync">Sincronizando...</p>}
+            </section>
+          </>
+        ) : null}
 
-        <section className="analytics-grid">
-          <div className="panel wide">
-            <h2>Evolucion mensual por departamento</h2>
-            <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={areaFallback}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#d9e2ea" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Area type="monotone" dataKey="Operaciones" stackId="1" stroke="#2563eb" fill="#7db1ff" />
-                <Area type="monotone" dataKey="Finanzas" stackId="1" stroke="#059669" fill="#8fd8b7" />
-                <Area type="monotone" dataKey="Comercial" stackId="1" stroke="#c2410c" fill="#f6ad7c" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="panel">
-            <h2>Concentracion de gasto</h2>
-            <ResponsiveContainer width="100%" height={260}>
-              <Treemap data={concentrationFallback} dataKey="size" nameKey="name" stroke="#fff" fill="#2563eb" />
-            </ResponsiveContainer>
-          </div>
-        </section>
-
-        <section className="table-panel">
-          <div className="table-head">
-            <h2>Egresos recientes</h2>
-            <button><CheckCircle2 size={17} /> Aprobar seleccion</button>
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th><input type="checkbox" /></th>
-                  <th>Proveedor</th>
-                  <th>Categoria</th>
-                  <th>Departamento</th>
-                  <th>Vencimiento</th>
-                  <th>Estado</th>
-                  <th>Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((expense) => (
-                  <tr key={expense.id}>
-                    <td><input type="checkbox" /></td>
-                    <td>{expense.vendor?.legalName ?? "N/D"}<small>{expense.vendor?.taxId}</small></td>
-                    <td>{expense.category?.parent?.name ?? "General"} / {expense.category?.name ?? "N/D"}</td>
-                    <td>{expense.department?.name ?? "N/D"}</td>
-                    <td>{new Date(expense.dueAt).toLocaleDateString("es-MX")}</td>
-                    <td><span className={`status ${expense.paymentStatus.toLowerCase()}`}>{statusLabel(expense.paymentStatus)}</span></td>
-                    <td>{money.format(expense.total)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {busy && <p className="sync">Sincronizando filtros...</p>}
-        </section>
+        {view === "camera" ? <CameraPanel /> : null}
+        {view === "admins" ? <AdminsPanel /> : null}
       </section>
     </main>
   );
