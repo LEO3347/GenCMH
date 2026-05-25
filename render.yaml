@@ -91,7 +91,6 @@ services:
   - type: web
     name: gen-admin-web
     runtime: static
-    plan: free
     rootDir: .
     buildCommand: npm ci && npm run build -w @admin-finops/frontend
     staticPublishPath: apps/admin-web/dist
