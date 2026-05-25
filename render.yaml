@@ -26,7 +26,7 @@ services:
       - key: QR_SIGNING_SECRET
         sync: false
       - key: WEB_ORIGIN
-        value: https://gen-web.onrender.com
+        value: https://gen-web-m47g.onrender.com
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: PAYPAL_CLIENT_ID
