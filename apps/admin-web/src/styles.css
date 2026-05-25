@@ -44,7 +44,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   gap: 12px;
 }
 
-.login-form input, .admin-form input, .scanner-box textarea {
+.login-form input, .admin-form input, .admin-form select, .admin-form textarea, .scanner-box textarea, .search-box input {
   width: 100%;
   min-height: 44px;
   border: 1px solid #cbd5e1;
@@ -53,7 +53,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   background: #fff;
 }
 
-.scanner-box textarea {
+.scanner-box textarea, .admin-form textarea {
   min-height: 120px;
   resize: vertical;
   padding: 12px;
@@ -219,6 +219,44 @@ td small { display: block; color: #64748b; margin-top: 3px; }
   color: #1e40af;
 }
 .sync, .empty { padding: 0 18px 16px; color: #64748b; }
+
+.search-box {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: min(100%, 460px);
+}
+
+.search-box button, .row-actions button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 7px;
+  background: #172033;
+  color: #fff;
+  font-weight: 800;
+  padding: 0 12px;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.toggle-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  color: #334155;
+  font-weight: 800;
+}
+
+.status.issued { background: #dbeafe; color: #1e40af; }
+.status.used { background: #d1fae5; color: #065f46; }
+.status.cancelled { background: #ffe4e6; color: #9f1239; }
+.status.refunded { background: #fef3c7; color: #92400e; }
 
 .camera-grid, .admin-grid {
   display: grid;

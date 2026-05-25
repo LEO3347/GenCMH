@@ -36,6 +36,52 @@ export type ScanResult = {
   } | null;
 };
 
+export type OperationsSummary = {
+  ticketsSold: number;
+  ticketsUsed: number;
+  grossCents: number;
+  activeEvents: number;
+};
+
+export type SoldTicket = {
+  id: string;
+  attendee_name: string;
+  status: "issued" | "used" | "cancelled" | "refunded";
+  price_cents: number;
+  created_at: string;
+  email: string;
+  display_name: string;
+  event_title: string;
+  ticket_type: string;
+  qr_status?: string | null;
+};
+
+export type AdminEvent = {
+  id: string;
+  title: string;
+  slug: string;
+  venue_name: string;
+  city: string;
+  starts_at: string;
+  capacity: number;
+  vip: boolean;
+  status: string;
+  tickets_sold?: number;
+  gross_cents?: number;
+};
+
+export type AdminTicketType = {
+  id: string;
+  event_id: string;
+  event_title?: string;
+  name: string;
+  tier: string;
+  price_cents: number;
+  currency: string;
+  quantity: number;
+  per_user_limit: number;
+};
+
 export type Expense = {
   id: string;
   amount: string;
@@ -72,6 +118,26 @@ export const api = {
   admins: () => request<{ admins: AdminAccount[] }>("/api/v1/admins"),
   createAdmin: (input: { fullName: string; email: string; password: string }) =>
     request<{ admin: AdminAccount }>("/api/v1/admins", { method: "POST", body: JSON.stringify(input) }),
+  operationsSummary: () => request<OperationsSummary>("/api/v1/operations/summary"),
+  soldTickets: (q = "") => request<{ tickets: SoldTicket[] }>(`/api/v1/operations/tickets?q=${encodeURIComponent(q)}`),
+  updateTicketStatus: (ticketId: string, status: SoldTicket["status"]) =>
+    request<{ ticket: { id: string; status: string } }>(`/api/v1/operations/tickets/${ticketId}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  adminEvents: () => request<{ events: AdminEvent[] }>("/api/v1/operations/events"),
+  createEvent: (input: {
+    title: string;
+    slug: string;
+    venueName: string;
+    city: string;
+    startsAt: string;
+    capacity: number;
+    vip: boolean;
+    status: string;
+    description: string;
+    coverUrl: string;
+  }) => request<{ event: AdminEvent }>("/api/v1/operations/events", { method: "POST", body: JSON.stringify(input) }),
+  ticketTypes: (eventId = "") => request<{ ticketTypes: AdminTicketType[] }>(`/api/v1/operations/ticket-types?eventId=${encodeURIComponent(eventId)}`),
+  createTicketType: (input: { eventId: string; name: string; tier: string; priceCents: number; quantity: number; perUserLimit: number }) =>
+    request<{ ticketType: AdminTicketType }>("/api/v1/operations/ticket-types", { method: "POST", body: JSON.stringify(input) }),
   createExport: (format: "XLSX" | "CSV" | "PDF", filters: Record<string, unknown>) =>
     request<{ job: { id: string; status: string } }>("/api/v1/exports", { method: "POST", body: JSON.stringify({ format, filters }) })
 };

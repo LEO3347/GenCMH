@@ -12,6 +12,7 @@ import { analyticsRouter } from "./routes/analytics.routes.js";
 import { automationRouter } from "./routes/automation.routes.js";
 import { scanRouter } from "./routes/scan.routes.js";
 import { adminUsersRouter } from "./routes/admin-users.routes.js";
+import { operationsRouter } from "./routes/operations.routes.js";
 import { startRecurringExpenseJob } from "./jobs/recurrence.js";
 
 const app = express();
@@ -30,6 +31,7 @@ app.use("/api/v1/expenses", expenseRouter);
 app.use("/api/v1/analytics", analyticsRouter);
 app.use("/api/v1/scans", scanRouter);
 app.use("/api/v1/admins", adminUsersRouter);
+app.use("/api/v1/operations", operationsRouter);
 app.use("/api/v1", automationRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
