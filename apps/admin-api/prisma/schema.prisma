@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PaymentMethodType {
+  CORPORATE_CARD
+  BANK_TRANSFER
+  PETTY_CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  SCHEDULED
+  OVERDUE
+  IN_REVIEW
+}
+
+enum ExportFormat {
+  XLSX
+  CSV
+  PDF
+}
+
+enum ExportStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SLACK
+}
+
+model AdminUser {
+  id                  String     @id @default(uuid()) @db.Uuid
+  email               String     @unique
+  passwordHash        String
+  fullName            String
+  roleId              String     @db.Uuid
+  role                Role       @relation(fields: [roleId], references: [id])
+  departmentId        String?    @db.Uuid
+  department          Department? @relation(fields: [departmentId], references: [id])
+  totpSecretEncrypted String?
+  isTotpEnabled       Boolean    @default(false)
+  failedLoginAttempts Int        @default(0)
+  lockedAt            DateTime?
+  lastLoginAt         DateTime?
+  isActive            Boolean    @default(true)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  expensesCreated     Expense[]  @relation("ExpenseCreatedBy")
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  exportJobs          ExportJob[]
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String           @unique
+  description String?
+  users       AdminUser[]
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  resource    String
+  action      String
+  description String?
+  roles       RolePermission[]
+
+  @@unique([resource, action])
+}
+
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model Policy {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  resource    String
+  action      String
+  effect      String   @default("allow")
+  conditions  Json
+  priority    Int      @default(100)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Department {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  code      String    @unique
+  users     AdminUser[]
+  expenses  Expense[]
+  budgets   Budget[]
+  createdAt DateTime  @default(now())
+}
+
+model Vendor {
+  id            String    @id @default(uuid()) @db.Uuid
+  taxId         String    @unique
+  legalName     String
+  contactName   String?
+  contactEmail  String?
+  contactPhone  String?
+  country       String    @default("MX")
+  isActive      Boolean   @default(true)
+  expenses      Expense[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model ExpenseCategory {
+  id        String            @id @default(uuid()) @db.Uuid
+  name      String
+  parentId  String?           @db.Uuid
+  parent    ExpenseCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  ExpenseCategory[] @relation("CategoryTree")
+  expenses  Expense[]
+
+  @@unique([name, parentId])
+}
+
+model Expense {
+  id                    String            @id @default(uuid()) @db.Uuid
+  amount                Decimal           @db.Decimal(18, 4)
+  currency              String            @db.Char(3)
+  exchangeRateToBase    Decimal           @db.Decimal(18, 8)
+  baseCurrency          String            @default("MXN") @db.Char(3)
+  issuedAt              DateTime
+  paidAt                DateTime?
+  dueAt                 DateTime
+  paymentMethodType     PaymentMethodType
+  cardLast4             String?
+  transferTrackingKey   String?
+  pettyCashCustodian    String?
+  paymentStatus         PaymentStatus     @default(PENDING)
+  vendorId              String            @db.Uuid
+  vendor                Vendor            @relation(fields: [vendorId], references: [id])
+  categoryId            String            @db.Uuid
+  category              ExpenseCategory   @relation(fields: [categoryId], references: [id])
+  departmentId          String            @db.Uuid
+  department            Department        @relation(fields: [departmentId], references: [id])
+  description           String?
+  createdById           String            @db.Uuid
+  createdBy             AdminUser         @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+  isDeleted             Boolean           @default(false)
+  receipts              ReceiptFile[]
+  recurringRuleId       String?           @db.Uuid
+  recurringRule         RecurringExpenseRule? @relation(fields: [recurringRuleId], references: [id])
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@index([departmentId, issuedAt])
+  @@index([vendorId, paymentStatus])
+  @@index([dueAt, paymentStatus])
+}
+
+model ReceiptFile {
+  id          String   @id @default(uuid()) @db.Uuid
+  expenseId   String   @db.Uuid
+  expense     Expense  @relation(fields: [expenseId], references: [id])
+  storageKey  String
+  publicUrl   String?
+  mimeType    String
+  sizeBytes   Int
+  sha256      String
+  uploadedBy  String   @db.Uuid
+  createdAt   DateTime @default(now())
+}
+
+model RecurringExpenseRule {
+  id              String    @id @default(uuid()) @db.Uuid
+  name            String
+  vendorId        String    @db.Uuid
+  categoryId      String    @db.Uuid
+  departmentId    String    @db.Uuid
+  amount          Decimal   @db.Decimal(18, 4)
+  currency        String    @db.Char(3)
+  cronExpression  String
+  nextRunAt       DateTime
+  lastRunAt       DateTime?
+  isActive        Boolean   @default(true)
+  createdById     String    @db.Uuid
+  expenses        Expense[]
+  createdAt       DateTime  @default(now())
+}
+
+model Budget {
+  id           String    @id @default(uuid()) @db.Uuid
+  departmentId String    @db.Uuid
+  department   Department @relation(fields: [departmentId], references: [id])
+  categoryId   String?   @db.Uuid
+  periodStart  DateTime
+  periodEnd    DateTime
+  amount       Decimal   @db.Decimal(18, 4)
+  currency     String    @default("MXN") @db.Char(3)
+
+  @@index([departmentId, periodStart, periodEnd])
+}
+
+model Notification {
+  id          String              @id @default(uuid()) @db.Uuid
+  userId      String?             @db.Uuid
+  user        AdminUser?          @relation(fields: [userId], references: [id])
+  channel     NotificationChannel
+  title       String
+  body        String
+  metadata    Json?
+  readAt      DateTime?
+  createdAt   DateTime            @default(now())
+}
+
+model ExportJob {
+  id          String       @id @default(uuid()) @db.Uuid
+  requestedById String    @db.Uuid
+  requestedBy AdminUser    @relation(fields: [requestedById], references: [id])
+  format      ExportFormat
+  status      ExportStatus @default(QUEUED)
+  filters     Json
+  fileUrl     String?
+  error       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model AuditLog {
+  id          String    @id @default(uuid()) @db.Uuid
+  actorId     String?   @db.Uuid
+  actor       AdminUser? @relation(fields: [actorId], references: [id])
+  action      String
+  resource    String
+  resourceId  String?
+  before      Json?
+  after       Json?
+  ipAddress   String?
+  userAgent   String?
+  hash        String
+  previousHash String?
+  createdAt   DateTime  @default(now())
+
+  @@index([resource, resourceId])
+  @@index([actorId, createdAt])
+}

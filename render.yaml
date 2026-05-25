@@ -49,10 +49,81 @@ services:
         value: 3000
       - key: NEXT_PUBLIC_API_URL
         value: https://gen-api-2af9.onrender.com
+  - type: web
+    name: gen-admin-api
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm ci && npm run build -w @admin-finops/backend
+    startCommand: npm run prisma:migrate -w @admin-finops/backend && npm run start -w @admin-finops/backend
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 20.19.0
+      - key: NODE_ENV
+        value: production
+      - key: NODE_OPTIONS
+        value: --max_old_space_size=512
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gen-admin-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: COOKIE_DOMAIN
+        sync: false
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: gen-admin-web
+          property: url
+      - key: CORS_ORIGIN
+        fromService:
+          type: web
+          name: gen-admin-web
+          property: url
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: SLACK_WEBHOOK_URL
+        sync: false
+      - key: SMTP_URL
+        sync: false
+  - type: web
+    name: gen-admin-web
+    runtime: static
+    plan: free
+    rootDir: .
+    buildCommand: npm ci && npm run build -w @admin-finops/frontend
+    staticPublishPath: apps/admin-web/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 20.19.0
+      - key: NODE_OPTIONS
+        value: --max_old_space_size=512
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: gen-admin-api
+          property: url
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
 
 databases:
   - name: gen-postgres
     databaseName: gen
     user: gen
+    plan: free
+    postgresMajorVersion: "18"
+  - name: gen-admin-postgres
+    databaseName: gen_admin
+    user: gen_admin
     plan: free
     postgresMajorVersion: "18"

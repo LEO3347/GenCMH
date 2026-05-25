@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Crown, Gift, Loader2, LogOut, QrCode, RefreshCw, ShoppingBag, Sparkles, Ticket, UserRound } from "lucide-react";
+import { Crown, Gift, Loader2, LogOut, QrCode, RefreshCw, ShoppingBag, Sparkles, Ticket, WalletCards } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://gen-api-2af9.onrender.com";
 
-type Tab = "events" | "shop" | "tables" | "orders" | "rewards";
+type Tab = "events" | "tickets" | "shop" | "tables" | "orders" | "rewards";
 
 interface GenEvent {
   id: string;
@@ -30,6 +30,28 @@ interface Product {
   currency: string;
   stock: number;
   pickup_zone: string;
+}
+
+interface TicketType {
+  id: string;
+  event_id: string;
+  name: string;
+  tier: string;
+  price_cents: number;
+  quantity: number;
+}
+
+interface IssuedTicket {
+  ticket: {
+    id: string;
+    attendee_name: string;
+    status: string;
+    price_cents: number;
+  };
+  qr: {
+    token: string;
+    image: string;
+  };
 }
 
 interface LocalOrder {
@@ -147,11 +169,22 @@ export default function Home() {
   const [orders, setOrders] = useState<LocalOrder[]>([]);
   const [tables, setTables] = useState<VenueTable[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
+  const [ticketTypeId, setTicketTypeId] = useState("");
+  const [attendeeName, setAttendeeName] = useState("");
+  const [issuedTicket, setIssuedTicket] = useState<IssuedTicket | null>(null);
+  const [ticketMessage, setTicketMessage] = useState("");
   const [syncing, setSyncing] = useState(false);
 
   const selectedEvent = manifest.events.find((event) => event.id === selectedEventId) ?? manifest.events[0];
   const products = useMemo(() => manifest.products.filter((product) => product.event_id === selectedEvent?.id), [manifest.products, selectedEvent?.id]);
   const total = products.reduce((sum, product) => sum + (cart[product.id] ?? 0) * product.price_cents, 0);
+  const ticketAiTip = useMemo(() => {
+    if (!selectedEvent) return "Selecciona un evento para recibir una recomendacion.";
+    if (selectedEvent.vip) return "IA recomienda comprar VIP si quieres mesa, acceso rapido y mejor experiencia en puerta.";
+    if (selectedEvent.trending_score >= 80) return "IA detecta alta demanda: compra tu boleto pronto antes de que suba la disponibilidad.";
+    return "IA recomienda acceso general y pick-up anticipado para entrar sin filas.";
+  }, [selectedEvent]);
 
   useEffect(() => {
     localStorage.removeItem("gen.web.token");
@@ -219,6 +252,38 @@ export default function Home() {
     if (!selectedEvent) return;
     const result = await api<{ tables: VenueTable[]; zones: unknown[] }>(`/api/tables/events/${selectedEvent.id}/map`, {}, token);
     setTables(result.tables);
+  }
+
+  async function loadTickets() {
+    if (!selectedEvent) return;
+    const result = await api<{ ticketTypes: TicketType[] }>(`/api/events/${selectedEvent.id}`);
+    setTicketTypes(result.ticketTypes);
+    setTicketTypeId((current) => current || result.ticketTypes[0]?.id || "");
+  }
+
+  async function buyTicket() {
+    if (!selectedEvent || !ticketTypeId) return;
+    const cleanAttendee = attendeeName.trim();
+    if (cleanAttendee.length < 2) {
+      setTicketMessage("Escribe el nombre del asistente.");
+      return;
+    }
+
+    setTicketMessage("");
+    try {
+      const result = await api<IssuedTicket>("/api/tickets", {
+        method: "POST",
+        body: JSON.stringify({
+          eventId: selectedEvent.id,
+          ticketTypeId,
+          attendeeName: cleanAttendee
+        })
+      }, token);
+      setIssuedTicket(result);
+      setTicketMessage("Boleto generado. Guarda el QR para el acceso.");
+    } catch {
+      setTicketMessage("No se pudo comprar el boleto. Intenta otra vez.");
+    }
   }
 
   async function loadRewards() {
@@ -354,8 +419,9 @@ export default function Home() {
           </button>
         </header>
 
-        <nav className="mb-4 grid grid-cols-5 gap-2">
+        <nav className="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
           <TabButton active={tab === "events"} label="Eventos" icon={<Ticket size={17} />} onClick={() => setTab("events")} />
+          <TabButton active={tab === "tickets"} label="Boletos" icon={<WalletCards size={17} />} onClick={() => { setTab("tickets"); loadTickets(); }} />
           <TabButton active={tab === "shop"} label="Pick-up" icon={<ShoppingBag size={17} />} onClick={() => setTab("shop")} />
           <TabButton active={tab === "tables"} label="Mesas" icon={<Crown size={17} />} onClick={() => { setTab("tables"); loadTables(); }} />
           <TabButton active={tab === "orders"} label="Compras" icon={<RefreshCw size={17} />} onClick={() => setTab("orders")} />
@@ -375,6 +441,49 @@ export default function Home() {
                 </div>
               </button>
             ))}
+          </section>
+        ) : null}
+
+        {tab === "tickets" ? (
+          <section className="grid gap-3 md:grid-cols-[1fr_.9fr]">
+            <div className="rounded-lg border border-white/10 bg-white/[0.06] p-5">
+              <h2 className="text-xl font-black">Venta de boletos</h2>
+              <p className="mt-1 text-white/58">{selectedEvent?.title ?? "Selecciona un evento"}</p>
+              <div className="mt-4 rounded-md border border-[#c7ff3d]/30 bg-[#c7ff3d]/10 p-3 text-sm font-bold text-[#c7ff3d]">
+                Asistente IA: {ticketAiTip}
+              </div>
+              <input className="mt-4 w-full rounded-md border border-white/10 bg-black/40 p-4" value={attendeeName} onChange={(event) => setAttendeeName(event.target.value)} placeholder="Nombre del asistente" />
+              <div className="mt-4 space-y-3">
+                {ticketTypes.map((ticket) => (
+                  <button key={ticket.id} onClick={() => setTicketTypeId(ticket.id)} className={`flex w-full items-center justify-between rounded-md border p-4 text-left ${ticket.id === ticketTypeId ? "border-[#00d4ff]/70 bg-[#00d4ff]/10" : "border-white/10 bg-black/20"}`}>
+                    <span>
+                      <span className="block font-black">{ticket.name}</span>
+                      <span className="text-sm text-white/55">{ticket.tier}</span>
+                    </span>
+                    <span className="font-black text-[#c7ff3d]">{money(ticket.price_cents)}</span>
+                  </button>
+                ))}
+              </div>
+              <button onClick={buyTicket} disabled={!ticketTypeId} className="mt-4 w-full rounded-md bg-white p-4 font-black text-black disabled:opacity-40">
+                Comprar boleto
+              </button>
+              {ticketMessage ? <p className="mt-3 rounded-md border border-white/10 bg-black/35 p-3 text-sm text-white/70">{ticketMessage}</p> : null}
+            </div>
+            <div className="grid place-items-center rounded-lg border border-white/10 bg-white/[0.06] p-6 text-center">
+              {issuedTicket ? (
+                <div>
+                  <img src={issuedTicket.qr.image} alt="QR del boleto GEN" className="mx-auto h-64 w-64 rounded-md bg-white p-3" />
+                  <h2 className="mt-4 text-xl font-black">{issuedTicket.ticket.attendee_name}</h2>
+                  <p className="mt-1 text-white/58">Estado: {issuedTicket.ticket.status}</p>
+                </div>
+              ) : (
+                <div>
+                  <QrCode className="mx-auto text-[#00d4ff]" size={88} />
+                  <h2 className="mt-5 text-2xl font-black">QR de acceso</h2>
+                  <p className="mt-2 text-white/60">Aqui aparecera el QR despues de comprar.</p>
+                </div>
+              )}
+            </div>
           </section>
         ) : null}
 
