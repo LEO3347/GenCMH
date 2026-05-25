@@ -38,6 +38,10 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 });
 
 app.listen(config.PORT, () => {
-  startRecurringExpenseJob();
+  try {
+    startRecurringExpenseJob();
+  } catch (error) {
+    console.warn("Recurring expense job did not start", error);
+  }
   console.log(`Admin FinOps API listening on ${config.PORT}`);
 });
