@@ -20,6 +20,7 @@ import { initRealtime } from "./services/realtime.js";
 
 const app = express();
 
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "1mb" }));
 app.use(security);
 

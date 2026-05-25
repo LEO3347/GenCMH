@@ -3,7 +3,6 @@ import { z } from "zod";
 import { pool, tx } from "../db/pool.js";
 import { requireAuth } from "../middleware/auth.js";
 import { createSecureQr, hashToken, renderQrDataUrl } from "../services/qr.js";
-import { regenerateTicketQr } from "../services/ticketRecovery.js";
 
 export const ticketsRouter = Router();
 
@@ -41,7 +40,7 @@ ticketsRouter.post("/", requireAuth, async (req, res, next) => {
 
       await client.query(
         `insert into purchases (user_id, event_id, purchase_type, reference_id, amount_cents, status)
-         values ($1,$2,'ticket',$3,$4,'paid')`,
+         values ($1,$2,'ticket',$3,$4,'pending')`,
         [req.user!.id, input.eventId, ticket.rows[0].id, ticket.rows[0].price_cents]
       );
 
@@ -72,18 +71,6 @@ ticketsRouter.get("/mine", requireAuth, async (req, res, next) => {
       [req.user!.id]
     );
     res.json({ tickets: rows });
-  } catch (error) {
-    next(error);
-  }
-});
-
-ticketsRouter.post("/:ticketId/qr", requireAuth, async (req, res, next) => {
-  try {
-    const ticketId = String(req.params.ticketId);
-    const { rows } = await pool.query("select id from tickets where id = $1 and user_id = $2", [ticketId, req.user!.id]);
-    if (!rows[0]) return res.status(404).json({ error: "ticket_not_found" });
-    const qr = await regenerateTicketQr(ticketId);
-    res.json({ qr });
   } catch (error) {
     next(error);
   }
