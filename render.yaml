@@ -54,7 +54,7 @@ services:
     runtime: node
     plan: free
     rootDir: .
-    buildCommand: npm ci && npm run build -w @admin-finops/backend
+    buildCommand: npm ci --include=dev && npm run build -w @admin-finops/backend
     startCommand: npm run start -w @admin-finops/backend
     healthCheckPath: /healthz
     envVars:
@@ -100,7 +100,7 @@ services:
     name: gen-admin-web
     runtime: static
     rootDir: .
-    buildCommand: npm ci && npm run build -w @admin-finops/frontend
+    buildCommand: npm ci --include=dev && npm run build -w @admin-finops/frontend
     staticPublishPath: apps/admin-web/dist
     envVars:
       - key: NODE_VERSION
