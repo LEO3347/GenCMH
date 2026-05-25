@@ -396,7 +396,7 @@ export default function Home() {
             <div className="grid place-items-center rounded-lg border border-white/10 bg-white/[0.06] p-7 text-center">
               <QrCode className="text-[#00d4ff]" size={88} />
               <h2 className="mt-5 text-2xl font-black">QR unico GEN</h2>
-              <p className="mt-2 text-white/60">Tu pase, compras y reservas viven en un token temporal cifrado.</p>
+              <p className="mt-2 text-white/60">Tu pase, compras y reservas viven en un token cifrado.</p>
             </div>
           </section>
         ) : null}
